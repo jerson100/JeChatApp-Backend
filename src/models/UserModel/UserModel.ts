@@ -7,7 +7,9 @@ interface UserDocument extends Omit<User, "_id">, Document {
   equalPassword(plainPassword: string): Promise<boolean>;
 }
 
-interface UserModel extends Model<UserDocument> {}
+interface UserModel extends Model<UserDocument> {
+  setPassword(password: string): Promise<string>;
+}
 
 const UserSchema: Schema<UserDocument> = new Schema(
   {
@@ -25,6 +27,12 @@ UserSchema.methods.setPassword = async function (password: string) {
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(password, salt);
   this.password = hash;
+};
+
+UserSchema.statics.setPassword = async function (password: string) {
+  const salt = await bcrypt.genSalt(10);
+  const hash = await bcrypt.hash(password, salt);
+  return hash;
 };
 
 UserSchema.methods.equalPassword = async function (

@@ -22,4 +22,4 @@ const verifyToken = (token: string): (JwtPayload & Payload) | null => {
   }
 };
 
-export { generateToken, verifyToken };
+export { generateToken, verifyToken, Payload };

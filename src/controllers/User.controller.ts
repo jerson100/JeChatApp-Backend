@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import UserService from "../services/UserService";
-import { CreatedUserRequest } from "../types/User";
+import { CreatedUserRequest, PatchUserRequest } from "../types/User";
 
 export default class UserController {
   static createUser = async (
@@ -10,5 +10,16 @@ export default class UserController {
     const newUs = req.body as CreatedUserRequest;
     const user = await UserService.createUser(newUs);
     return res.status(201).json(user);
+  };
+  static patchUser = async (req: Request, res: Response): Promise<Response> => {
+    const body = req.body as PatchUserRequest;
+    const { id } = req.params;
+    const user = await UserService.patchUser(id, body);
+    return res.status(200).json(user);
+  };
+
+  static getUsers = async (req: Request, res: Response): Promise<Response> => {
+    const users = await UserService.getUsers();
+    return res.status(200).json(users);
   };
 }

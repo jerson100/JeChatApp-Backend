@@ -1,4 +1,6 @@
 import { Types } from "mongoose";
+import { SignInResponse } from "./Auth";
+import { Express } from "express";
 
 interface User {
   _id: string | Types.ObjectId;
@@ -12,6 +14,20 @@ interface User {
 
 type CreatedUserRequest = Pick<User, "username" | "password" | "email">;
 
-type CreateUserResponse = Omit<User, "password">;
+type PatchUserRequest = Partial<
+  Omit<User, "_id" | "createdAt" | "updatedAt" | "urlImageProfile"> & {
+    image: Express.Multer.File;
+  }
+>;
 
-export { User, CreatedUserRequest, CreateUserResponse };
+type CreateUserResponse = SignInResponse;
+type PatchUserResponse = Omit<User, "password">;
+// type CreateUserResponse = Omit<User, "password">;
+
+export {
+  User,
+  CreatedUserRequest,
+  CreateUserResponse,
+  PatchUserRequest,
+  PatchUserResponse,
+};
