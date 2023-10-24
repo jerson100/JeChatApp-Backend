@@ -12,8 +12,12 @@ import { MulterError } from "multer";
 import passport from "passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { v2 as cloudinary } from "cloudinary";
+import { createServer } from "http";
+import ServerSocket from "./config/serverSocket";
 
 const app = express();
+const server = createServer(app);
+new ServerSocket(server);
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -48,7 +52,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/v1/auth", AuthRouter);
 app.use("/api/v1/users", UserRouter);
 
-app.listen(process.env.PORT, () => {
+server.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
 
