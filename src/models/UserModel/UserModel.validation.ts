@@ -69,3 +69,9 @@ export const PatchUserValidationSchema = Yup.object().shape({
       return value.size <= 1024 * 1024 * 1; // 1 MB
     }),
 });
+
+export const ParamsGetAllUserSchema = Yup.object().shape({
+  page: Yup.number().min(1, "La página debe ser mayor a 0").default(1),
+  limit: Yup.number().default(10).min(1, "El límite debe ser mayor a 0"),
+  username: Yup.string(),
+});

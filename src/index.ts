@@ -4,6 +4,7 @@ import logger from "morgan";
 import cors from "cors";
 import AuthRouter from "./routers/v1/AuthRouter";
 import UserRouter from "./routers/v1/UserRouter";
+import FriendRouter from "./routers/v1/FriendRouter";
 import { connectDB } from "./lib/mongodb";
 import HandlerRequestError from "./lib/handlerRequestError";
 import AuthenticationError from "./lib/AuthenticationError";
@@ -51,6 +52,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/v1/auth", AuthRouter);
 app.use("/api/v1/users", UserRouter);
+app.use("/api/v1/friends", FriendRouter);
 
 server.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);

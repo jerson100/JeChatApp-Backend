@@ -2,7 +2,10 @@ import { Response, Request, NextFunction, Router } from "express";
 import UserController from "../../controllers/User.controller";
 import multer from "multer";
 import validateSchema from "../../middlewares/validateSchema";
-import { PatchUserValidationSchema } from "../../models/UserModel";
+import {
+  ParamsGetAllUserSchema,
+  PatchUserValidationSchema,
+} from "../../models/UserModel";
 import passport from "passport";
 import IdValidationSchema from "../../lib/IdValidationSchema";
 import handleErrorRequest from "../../middlewares/handleErrorRequest";
@@ -44,6 +47,7 @@ UserRouter.patch(
 UserRouter.get(
   "/",
   passport.authenticate("jwt", { session: false }),
+  validateSchema(ParamsGetAllUserSchema, "query", "query"),
   handleErrorRequest(UserController.getUsers)
 );
 

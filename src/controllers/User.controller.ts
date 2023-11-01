@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import UserService from "../services/UserService";
-import { CreatedUserRequest, PatchUserRequest } from "../types/User";
+import {
+  CreatedUserRequest,
+  PatchUserRequest,
+  UserQueryParams,
+} from "../types/User";
 
 export default class UserController {
   static createUser = async (
@@ -19,7 +23,9 @@ export default class UserController {
   };
 
   static getUsers = async (req: Request, res: Response): Promise<Response> => {
-    const users = await UserService.getUsers();
+    const query = req.query as unknown as UserQueryParams;
+    const user = req.user;
+    const users = await UserService.getUsers(query, user?._id);
     return res.status(200).json(users);
   };
 }

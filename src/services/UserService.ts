@@ -2,15 +2,19 @@ import { StatusCodes } from "http-status-codes";
 import HandlerRequestError from "../lib/handlerRequestError";
 import { generateToken } from "../lib/jwt";
 import UserModel from "../models/UserModel";
+import { Types } from "mongoose";
 import {
   CreateUserResponse,
   CreatedUserRequest,
+  GetAllUserResponse,
   PatchUserRequest,
   PatchUserResponse,
   User,
+  UserQueryParams,
 } from "../types/User";
 import { MappedTypeString } from "../types/utils";
 import { v2 as cloudinary, UploadApiOptions } from "cloudinary";
+import { Friend } from "../types/Friend";
 
 export default class UserService {
   static async createUser({
@@ -118,13 +122,103 @@ export default class UserService {
     };
   }
 
-  static async getUsers(): Promise<Omit<User, "password">[]> {
-    const users = await UserModel.find(
-      {},
-      {
-        password: 0,
+  static async getUsers(
+    query: UserQueryParams,
+    idUser?: string
+  ): Promise<GetAllUserResponse> {
+    const _q_idUser = idUser ? { _id: { $ne: idUser } } : {};
+    const _q_username = query.username
+      ? {
+          username: {
+            $regex: new RegExp(`.*(${query.username}).*`, "i"),
+          },
+        }
+      : {};
+    const countItems = await UserModel.countDocuments({
+      ..._q_idUser,
+      ..._q_username,
+    });
+    const users = await UserModel.aggregate<
+      User & {
+        friend?: Friend;
       }
-    );
-    return users;
+    >([
+      {
+        $match: { ..._q_idUser, ..._q_username },
+      },
+      {
+        $lookup: {
+          from: "friends",
+          let: { idUser: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    {
+                      $and: [
+                        {
+                          $eq: ["$senderUserId", "$$idUser"],
+                        },
+                        {
+                          $eq: [
+                            "$receiverUserId",
+                            new Types.ObjectId(idUser as string),
+                          ],
+                        },
+                      ],
+                    },
+                    {
+                      $and: [
+                        {
+                          $eq: ["$receiverUserId", "$$idUser"],
+                        },
+                        {
+                          $eq: [
+                            "$senderUserId",
+                            new Types.ObjectId(idUser as string),
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "friend",
+        },
+      },
+      {
+        $sort: {
+          username: 1,
+        },
+      },
+      {
+        $skip: (query.page - 1) * query.limit,
+      },
+      {
+        $limit: query.limit,
+      },
+      {
+        $project: {
+          password: 0,
+        },
+      },
+      {
+        $unwind: {
+          path: "$friend",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]);
+    return {
+      metadata: {
+        totalItems: countItems,
+        itemsPerPage: query.limit,
+        currentPage: query.page,
+      },
+      users,
+    };
   }
 }
