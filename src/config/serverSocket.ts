@@ -1,6 +1,10 @@
 import { Server } from "socket.io";
 import { Server as ServerHttp } from "http";
 import { Payload, verifyToken } from "../lib/jwt";
+import { Friend } from "../types/Friend";
+import { UserFriend } from "../types/UserFriend";
+import UserService from "../services/UserService";
+import FriendService from "../services/FriendService";
 
 const sessionsStore: Map<string, Payload> = new Map();
 
@@ -9,10 +13,14 @@ interface ServerToClientEvents {
   noArg: () => void;
   basicEmit: (a: number, b: string, c: Buffer) => void;
   withAck: (d: string, callback: (e: number) => void) => void;
+  changeStatusFriend: (friend: Friend) => void;
+  removeRequest: (idFriend: string) => void;
 }
 
 interface ClientToServerEvents {
   hello: () => void;
+  changeStatusFriend: (friend: Friend, toIdUser: string) => void;
+  getRequest: (callback: (request: Friend[]) => void) => void;
 }
 
 interface InterServerEvents {
@@ -44,9 +52,27 @@ export default class ServerSocket {
     this.io.on("connection", (socket) => {
       console.log("New client connected", socket.data.user._id);
 
-      socket.join(socket.data.user._id);
+      socket.join(socket.data.user._id); // room == idUser
 
       socket.emit("login", socket.data.user);
+
+      socket.on("changeStatusFriend", (friend, toIdUser) => {
+        // console.log(friend, toIdUser);
+        if (friend.connected) {
+          socket
+            .to([toIdUser, socket.data.user._id])
+            .emit("removeRequest", friend._id as string);
+        } else {
+          socket.to(toIdUser).emit("changeStatusFriend", friend);
+        }
+      });
+
+      socket.on("getRequest", async (fn) => {
+        const request = await FriendService.getRequestByIdUser(
+          socket.data.user._id as string
+        );
+        fn(request);
+      });
 
       socket.on("disconnect", async () => {
         const matchingSockets = await this.io

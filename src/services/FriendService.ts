@@ -8,7 +8,7 @@ export default class FriendService {
     senderUserId: string,
     receiverUserId: string
   ): Promise<Friend> => {
-    const exists = await FriendModel.findOne({
+    const exists = await FriendModel.findOne<Friend>({
       $or: [
         { senderUserId, receiverUserId },
         { senderUserId: receiverUserId, receiverUserId: senderUserId },
@@ -25,25 +25,19 @@ export default class FriendService {
       senderUserId,
       receiverUserId,
     });
-    await newFriend.save();
-    const _newF: Friend = {
-      _id: newFriend._id,
-      senderUserId: newFriend.senderUserId,
-      receiverUserId: newFriend.receiverUserId,
-      connected: newFriend.connected,
-      createdAt: newFriend.createdAt,
-      updatedAt: newFriend.updatedAt,
-    };
-    return _newF;
+    newFriend.save();
+    await newFriend.populate("senderUserId", "-password");
+    await newFriend.populate("receiverUserId", "-password");
+    console.log(newFriend);
+    return newFriend;
   };
 
   static updateFriend = async ({
     _id,
     connected,
   }: Pick<Friend, "_id" | "connected">): Promise<Friend> => {
-    const friend = await FriendModel.findOne({ _id });
+    const friend = await FriendModel.findOne<Friend>({ _id });
 
-    console.log(_id);
     if (!friend) {
       throw new HandlerRequestError(
         "La solicitud de amistad no existe",
@@ -52,11 +46,13 @@ export default class FriendService {
       );
     }
 
-    const updatedFriend = await FriendModel.findOneAndUpdate(
+    const updatedFriend = await FriendModel.findOneAndUpdate<Friend>(
       { _id },
       { $set: { connected } },
       { new: true }
-    );
+    )
+      .populate("senderUserId", "-password")
+      .populate("receiverUserId", "-password");
     if (!updatedFriend) {
       throw new HandlerRequestError(
         "La solicitud de amistad no se pudo actualizar",
@@ -64,14 +60,16 @@ export default class FriendService {
         StatusCodes.BAD_REQUEST
       );
     }
-    const objFriend: Friend = {
-      _id: updatedFriend._id,
-      senderUserId: updatedFriend.senderUserId,
-      receiverUserId: updatedFriend.receiverUserId,
-      connected: updatedFriend.connected,
-      createdAt: updatedFriend.createdAt,
-      updatedAt: updatedFriend.updatedAt,
-    };
-    return objFriend;
+    return updatedFriend;
+  };
+
+  static getRequestByIdUser = async (idUser: string): Promise<Friend[]> => {
+    const friends = await FriendModel.find<Friend>({
+      $or: [{ receiverUserId: idUser }],
+      connected: false,
+    })
+      .populate("senderUserId", "-password")
+      .populate("receiverUserId", "-password");
+    return friends;
   };
 }

@@ -3,6 +3,7 @@ import { SignInResponse } from "./Auth";
 import { Express } from "express";
 import { MetaDataPaginationResponse, QueryPagination } from "./utils";
 import { Friend } from "./Friend";
+import { UserFriend } from "./UserFriend";
 
 interface User {
   _id: string | Types.ObjectId;
@@ -32,9 +33,7 @@ type UserQueryParams = {
 
 type GetAllUserResponse = {
   metadata: MetaDataPaginationResponse;
-  users: Omit<User, "password">[] & {
-    friend?: Friend;
-  };
+  users: UserFriend[];
 };
 
 export {

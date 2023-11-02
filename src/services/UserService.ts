@@ -9,12 +9,11 @@ import {
   GetAllUserResponse,
   PatchUserRequest,
   PatchUserResponse,
-  User,
   UserQueryParams,
 } from "../types/User";
 import { MappedTypeString } from "../types/utils";
 import { v2 as cloudinary, UploadApiOptions } from "cloudinary";
-import { Friend } from "../types/Friend";
+import { UserFriend } from "../types/UserFriend";
 
 export default class UserService {
   static async createUser({
@@ -138,11 +137,7 @@ export default class UserService {
       ..._q_idUser,
       ..._q_username,
     });
-    const users = await UserModel.aggregate<
-      User & {
-        friend?: Friend;
-      }
-    >([
+    const users = await UserModel.aggregate<UserFriend>([
       {
         $match: { ..._q_idUser, ..._q_username },
       },
@@ -185,6 +180,34 @@ export default class UserService {
                 },
               },
             },
+            {
+              $lookup: {
+                from: "users",
+                localField: "senderUserId",
+                foreignField: "_id",
+                as: "senderUserId",
+              },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "receiverUserId",
+                foreignField: "_id",
+                as: "receiverUserId",
+              },
+            },
+            {
+              $unwind: {
+                path: "$senderUserId",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $unwind: {
+                path: "$receiverUserId",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
           ],
           as: "friend",
         },
@@ -203,6 +226,14 @@ export default class UserService {
       {
         $project: {
           password: 0,
+          "friend.senderUserId.password": 0,
+          "friend.receiverUserId.password": 0,
+        },
+      },
+      {
+        $unwind: {
+          path: "$friend.senderUserId",
+          preserveNullAndEmptyArrays: true,
         },
       },
       {
