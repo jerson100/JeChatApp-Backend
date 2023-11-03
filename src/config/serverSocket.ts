@@ -2,9 +2,9 @@ import { Server } from "socket.io";
 import { Server as ServerHttp } from "http";
 import { Payload, verifyToken } from "../lib/jwt";
 import { Friend } from "../types/Friend";
-import { UserFriend } from "../types/UserFriend";
-import UserService from "../services/UserService";
 import FriendService from "../services/FriendService";
+import { User } from "../types/User";
+import HandlerRequestError from "../lib/handlerRequestError";
 
 const sessionsStore: Map<string, Payload> = new Map();
 
@@ -15,12 +15,14 @@ interface ServerToClientEvents {
   withAck: (d: string, callback: (e: number) => void) => void;
   changeStatusFriend: (friend: Friend) => void;
   removeRequest: (idFriend: string) => void;
+  stateChangeInSearch: (friend: Friend) => void;
 }
 
 interface ClientToServerEvents {
   hello: () => void;
   changeStatusFriend: (friend: Friend, toIdUser: string) => void;
   getRequest: (callback: (request: Friend[]) => void) => void;
+  acceptRequest: (friend: Friend, callback: (error?: string) => void) => void;
 }
 
 interface InterServerEvents {
@@ -57,13 +59,43 @@ export default class ServerSocket {
       socket.emit("login", socket.data.user);
 
       socket.on("changeStatusFriend", (friend, toIdUser) => {
-        // console.log(friend, toIdUser);
+        const receiverUserId = friend.receiverUserId as User;
+        const senderUserId = friend.senderUserId as User;
         if (friend.connected) {
-          socket
-            .to([toIdUser, socket.data.user._id])
+          this.io
+            .to([receiverUserId._id as string, senderUserId._id as string])
             .emit("removeRequest", friend._id as string);
         } else {
           socket.to(toIdUser).emit("changeStatusFriend", friend);
+        }
+        this.io
+          .to([receiverUserId._id as string, senderUserId._id as string])
+          .emit("stateChangeInSearch", friend);
+      });
+
+      socket.on("acceptRequest", async (friend, callback) => {
+        if (!friend.connected) {
+          try {
+            const updatedFriend = await FriendService.updateFriend({
+              _id: friend._id as string,
+              connected: true,
+            });
+            const receiverUserId = updatedFriend.receiverUserId as User;
+            const senderUserId = updatedFriend.senderUserId as User;
+            this.io
+              .to(receiverUserId._id.toString())
+              .emit("removeRequest", updatedFriend._id as string);
+
+            this.io
+              .to([receiverUserId._id.toString(), senderUserId._id.toString()])
+              .emit("stateChangeInSearch", updatedFriend);
+            callback();
+          } catch (e) {
+            console.log(e);
+            if (e instanceof HandlerRequestError) {
+              callback(e.message);
+            }
+          }
         }
       });
 
